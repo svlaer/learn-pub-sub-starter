@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -29,8 +30,32 @@ func main() {
 		log.Fatalf("Failed to open RabbitMQ channel: %v", err)
 	}
 
-	if err = pubsub.PublishJSON(rabbitChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true}); err != nil {
-		log.Printf("Error while publishing JSON to RabbitMQ: %v", err)
+	gamelogic.PrintServerHelp()
+
+cmdLoop:
+	for {
+		inputWords := gamelogic.GetInput()
+		if len(inputWords) == 0 {
+			continue
+		}
+
+		switch inputWords[0] {
+		case "pause":
+			log.Println("Sending pause message...")
+			if err = pubsub.PublishJSON(rabbitChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true}); err != nil {
+				log.Printf("Error while publishing JSON to RabbitMQ: %v", err)
+			}
+		case "resume":
+			log.Println("Sending resume message...")
+			if err = pubsub.PublishJSON(rabbitChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false}); err != nil {
+				log.Printf("Error while publishing JSON to RabbitMQ: %v", err)
+			}
+		case "quit":
+			log.Println("Exiting...")
+			break cmdLoop
+		default:
+			log.Printf("Unrecognised command: %s\n", inputWords[0])
+		}
 	}
 
 	// Wait for ctrl+c
