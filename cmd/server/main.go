@@ -32,7 +32,6 @@ func main() {
 
 	gamelogic.PrintServerHelp()
 
-cmdLoop:
 	for {
 		inputWords := gamelogic.GetInput()
 		if len(inputWords) == 0 {
@@ -52,7 +51,7 @@ cmdLoop:
 			}
 		case "quit":
 			log.Println("Exiting...")
-			break cmdLoop
+			return
 		default:
 			log.Printf("Unrecognised command: %s\n", inputWords[0])
 		}

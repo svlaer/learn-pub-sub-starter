@@ -43,6 +43,43 @@ func main() {
 
 	fmt.Printf("Queue %v declared and bound!\n", rabbitQueue.Name)
 
+	gs := gamelogic.NewGameState(username)
+
+	for {
+		inputWords := gamelogic.GetInput()
+		if len(inputWords) == 0 {
+			continue
+		}
+
+		switch inputWords[0] {
+		case "spawn":
+			log.Println("Spawning...")
+			if err = gs.CommandSpawn(inputWords); err != nil {
+				log.Println(err)
+				continue
+			}
+		case "move":
+			fmt.Println("Moving...")
+			if _, err = gs.CommandMove(inputWords); err != nil {
+				log.Println(err)
+				continue
+			}
+			log.Println("Move successful")
+		case "status":
+			gs.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming not allowed yet!")
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		default:
+			log.Printf("Unrecognised command: %s\n", inputWords[0])
+			continue
+		}
+	}
+
 	// Wait for ctrl+c
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
