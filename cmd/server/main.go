@@ -53,20 +53,20 @@ func main() {
 
 		switch inputWords[0] {
 		case "pause":
-			log.Println("Sending pause message...")
+			fmt.Println("Sending pause message...")
 			if err = pubsub.PublishJSON(rabbitChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true}); err != nil {
 				log.Printf("Error while publishing JSON to RabbitMQ: %v", err)
 			}
 		case "resume":
-			log.Println("Sending resume message...")
+			fmt.Println("Sending resume message...")
 			if err = pubsub.PublishJSON(rabbitChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false}); err != nil {
 				log.Printf("Error while publishing JSON to RabbitMQ: %v", err)
 			}
 		case "quit":
-			log.Println("Exiting...")
+			fmt.Println("Exiting...")
 			return
 		default:
-			log.Printf("Unrecognised command: %s\n", inputWords[0])
+			fmt.Printf("Unrecognised command: %s\n", inputWords[0])
 		}
 	}
 

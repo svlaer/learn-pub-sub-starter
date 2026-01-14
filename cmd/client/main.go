@@ -12,6 +12,13 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
+	return func(ps routing.PlayingState) {
+		defer fmt.Print("> ")
+		gs.HandlePause(ps)
+	}
+}
+
 func main() {
 	const rabbitConnString string = "amqp://guest:guest@localhost:5672"
 
@@ -30,20 +37,20 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	_, rabbitQueue, err := pubsub.DeclareAndBind(
+	gs := gamelogic.NewGameState(username)
+
+	if err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
-		fmt.Sprintf("%s.%s", routing.PauseKey, username),
+		fmt.Sprintf("pause.%s", gs.GetUsername()),
 		routing.PauseKey,
 		pubsub.Transient,
-	)
-	if err != nil {
+		handlerPause(gs),
+	); err != nil {
 		log.Fatalf("Failed to subscribe to pause: %v", err)
 	}
 
-	fmt.Printf("Queue %v declared and bound!\n", rabbitQueue.Name)
-
-	gs := gamelogic.NewGameState(username)
+	fmt.Println("Subscribed to pause.")
 
 	for {
 		inputWords := gamelogic.GetInput()
@@ -53,7 +60,7 @@ func main() {
 
 		switch inputWords[0] {
 		case "spawn":
-			log.Println("Spawning...")
+			fmt.Println("Spawning...")
 			if err = gs.CommandSpawn(inputWords); err != nil {
 				log.Println(err)
 				continue
@@ -64,7 +71,7 @@ func main() {
 				log.Println(err)
 				continue
 			}
-			log.Println("Move successful")
+			fmt.Println("Move successful")
 		case "status":
 			gs.CommandStatus()
 		case "help":
@@ -75,7 +82,7 @@ func main() {
 			gamelogic.PrintQuit()
 			return
 		default:
-			log.Printf("Unrecognised command: %s\n", inputWords[0])
+			fmt.Printf("Unrecognised command: %s\n", inputWords[0])
 			continue
 		}
 	}
