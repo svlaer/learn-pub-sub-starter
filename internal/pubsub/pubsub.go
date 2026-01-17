@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -24,6 +25,14 @@ func (sqt SimpleQueueType) String() string {
 	return queueTypeName[sqt]
 }
 
+type AckType int
+
+const (
+	Ack AckType = iota
+	NackRequeue
+	NackDiscard
+)
+
 func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	valJson, err := json.Marshal(val)
 	if err != nil {
@@ -39,7 +48,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType SimpleQueueType,
-	handler func(T),
+	handler func(T) AckType,
 ) error {
 	rabbitChan, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
 	if err != nil {
@@ -66,8 +75,20 @@ func SubscribeJSON[T any](
 				continue
 			}
 
-			handler(target)
-			delivery.Ack(false)
+			ack := handler(target)
+			switch ack {
+			case Ack:
+				delivery.Ack(false)
+				log.Println("Ack")
+			case NackRequeue:
+				delivery.Nack(false, true)
+				log.Println("Nack with requeue")
+			case NackDiscard:
+				delivery.Nack(false, false)
+				log.Println("Nack with discard")
+			default:
+				fmt.Println("Unkown ackType!")
+			}
 		}
 	}()
 
