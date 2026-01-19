@@ -121,7 +121,11 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, fmt.Errorf("Unknown SimpleQueueType: %s", queueType)
 	}
 
-	rabbitQueue, err := rabbitChan.QueueDeclare(queueName, durable, autoDelete, exclusive, false, nil)
+	table := amqp.Table{
+		"x-dead-letter-exchange": "peril_dlx",
+	}
+
+	rabbitQueue, err := rabbitChan.QueueDeclare(queueName, durable, autoDelete, exclusive, false, table)
 	if err != nil {
 		return nil, amqp.Queue{}, fmt.Errorf("Failed to declare queue: %v", err)
 	}
