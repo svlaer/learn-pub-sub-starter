@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -79,13 +78,10 @@ func SubscribeJSON[T any](
 			switch ack {
 			case Ack:
 				delivery.Ack(false)
-				log.Println("Ack")
 			case NackRequeue:
 				delivery.Nack(false, true)
-				log.Println("Nack with requeue")
 			case NackDiscard:
 				delivery.Nack(false, false)
-				log.Println("Nack with discard")
 			default:
 				fmt.Println("Unkown ackType!")
 			}
