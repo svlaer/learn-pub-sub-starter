@@ -12,29 +12,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) pubsub.AckType {
-	return func(ps routing.PlayingState) pubsub.AckType {
-		defer fmt.Print("> ")
-		gs.HandlePause(ps)
-		return pubsub.Ack
-	}
-}
-
-func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) pubsub.AckType {
-	return func(move gamelogic.ArmyMove) pubsub.AckType {
-		defer fmt.Print("> ")
-		outcome := gs.HandleMove(move)
-		switch outcome {
-		case gamelogic.MoveOutComeSafe, gamelogic.MoveOutcomeMakeWar:
-			return pubsub.Ack
-		case gamelogic.MoveOutcomeSamePlayer:
-			return pubsub.NackDiscard
-		default:
-			return pubsub.NackDiscard
-		}
-	}
-}
-
 func main() {
 	const rabbitConnString string = "amqp://guest:guest@localhost:5672"
 
@@ -78,11 +55,23 @@ func main() {
 		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, gs.GetUsername()),
 		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),
 		pubsub.Transient,
-		handlerMove(gs),
+		handlerMove(gs, rabbitChan),
 	); err != nil {
 		log.Fatalf("Failed to subscribe to move queue: %v", err)
 	}
 	fmt.Println("Subscribed to army moves.")
+
+	if err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		"war",
+		fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix),
+		pubsub.Durable,
+		handlerWar(gs),
+	); err != nil {
+		log.Fatalf("Failed to subscribe to war recognitions queue: %v", err)
+	}
+	fmt.Println("Subscribed to war recognition.")
 
 	for {
 		inputWords := gamelogic.GetInput()
