@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -46,10 +47,10 @@ func handlerMove(gs *gamelogic.GameState, publishCh *amqp.Channel) func(gamelogi
 	}
 }
 
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.AckType {
+func handlerWar(gs *gamelogic.GameState, publishCh *amqp.Channel) func(gamelogic.RecognitionOfWar) pubsub.AckType {
 	return func(rw gamelogic.RecognitionOfWar) pubsub.AckType {
 		defer fmt.Print("> ")
-		outcome, _, _ := gs.HandleWar(rw)
+		outcome, winner, loser := gs.HandleWar(rw)
 
 		switch outcome {
 		case gamelogic.WarOutcomeNotInvolved:
@@ -57,14 +58,45 @@ func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
+			log := routing.GameLog{
+				CurrentTime: time.Now(),
+				Message:     fmt.Sprintf("%s won a war against %s", winner, loser),
+				Username:    gs.GetUsername(),
+			}
+			if err := publishGameLog(log, publishCh); err != nil {
+				return pubsub.NackRequeue
+			}
+
 			return pubsub.Ack
 		case gamelogic.WarOutcomeYouWon:
+			log := routing.GameLog{
+				CurrentTime: time.Now(),
+				Message:     fmt.Sprintf("%s won a war against %s", winner, loser),
+				Username:    gs.GetUsername(),
+			}
+			if err := publishGameLog(log, publishCh); err != nil {
+				return pubsub.NackRequeue
+			}
+
 			return pubsub.Ack
 		case gamelogic.WarOutcomeDraw:
+			log := routing.GameLog{
+				CurrentTime: time.Now(),
+				Message:     fmt.Sprintf("A war between %s and %s resulted in a draw", winner, loser),
+				Username:    gs.GetUsername(),
+			}
+			if err := publishGameLog(log, publishCh); err != nil {
+				return pubsub.NackRequeue
+			}
+
 			return pubsub.Ack
 		default:
 			fmt.Println("Error: Unknown war outcome!")
 			return pubsub.NackDiscard
 		}
 	}
+}
+
+func publishGameLog(log routing.GameLog, publishCh *amqp.Channel) error {
+	return pubsub.PublishGob(publishCh, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.GameLogSlug, log.Username), log)
 }
