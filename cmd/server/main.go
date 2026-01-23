@@ -30,18 +30,18 @@ func main() {
 		log.Fatalf("Failed to open RabbitMQ channel: %v", err)
 	}
 
-	_, topicQueue, err := pubsub.DeclareAndBind(
+	if err = pubsub.SubscribeGob(
 		conn,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		fmt.Sprintf("%s.*", routing.GameLogSlug),
 		pubsub.Durable,
-	)
-	if err != nil {
-		log.Fatalf("Failed to declare and bind game_logs queue: %v", err)
+		handlerLogs(),
+	); err != nil {
+		log.Fatalf("Failed to subscribe to game_logs queue: %v", err)
 	}
 
-	fmt.Printf("Queue %v declared and bound!\n", topicQueue)
+	fmt.Println("Subscribed to game_logs queue.")
 
 	gamelogic.PrintServerHelp()
 
