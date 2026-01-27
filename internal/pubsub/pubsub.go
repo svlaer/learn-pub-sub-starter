@@ -104,6 +104,10 @@ func subscribe[T any](
 		return fmt.Errorf("Failed to declare and bind queue: %v", err)
 	}
 
+	if err = rabbitChan.Qos(10, 0, false); err != nil {
+		return fmt.Errorf("Error configuring prefetch count: %v", err)
+	}
+
 	deliveryChan, err := rabbitChan.Consume(queue.Name, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("Error consuming queue: %v", err)
